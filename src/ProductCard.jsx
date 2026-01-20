@@ -1,7 +1,8 @@
 // 1. Accept "onAdd" as a prop
 function ProductCard({ product, onAdd }) {
+  // CHANGED "card" TO "product-card" BELOW 👇
   return (
-    <div className="card">
+    <div className="product-card">
       <img src={product.image} alt={product.name} />
       <h3>{product.name}</h3>
       <p className="price">${product.price}</p>
