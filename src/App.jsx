@@ -35,7 +35,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <h1>HypeStore Drop (Cart: {cart.length})</h1>
+     <h1>Khushi's Store (Cart: {cart.length})</h1>
       
       {/* 1. If we are NOT checking out, show products */}
       {!isCheckout && (
