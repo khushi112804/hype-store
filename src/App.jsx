@@ -4,6 +4,7 @@ import Cart from "./Cart";
 import Checkout from "./Checkout";
 import Home from "./pages/Home";
 import ProductDetails from "./pages/ProductDetails";
+import Toast from "./Toast"; // <--- IMPORT THE NEW COMPONENT
 
 function App() {
   // 1. APP STATE
@@ -16,22 +17,33 @@ function App() {
   const [currentView, setCurrentView] = useState("home"); 
   const [selectedProductId, setSelectedProductId] = useState(null);
 
+  // 3. NOTIFICATION STATE (New!)
+  const [notification, setNotification] = useState(null);
+
   useEffect(() => {
     localStorage.setItem("hypeCart", JSON.stringify(cart));
   }, [cart]);
 
   // --- ACTIONS ---
+  
+  // Helper to show popup
+  function showNotification(message) {
+    setNotification(message);
+  }
+
   function addToCart(product) {
     setCart([...cart, product]);
+    showNotification(`Added ${product.name} to Bag!`); // <--- Trigger Notification
   }
 
   function removeFromCart(indexToRemove) {
     const newCart = cart.filter((item, index) => index !== indexToRemove);
     setCart(newCart);
+    showNotification("Item removed from Bag");
   }
 
   function handleOrder(userData) {
-    alert(`Order Placed! Thanks ${userData.name}.`);
+    showNotification(`Order Placed! Thanks ${userData.name}`); // <--- Trigger Notification
     setCart([]);
     setCurrentView("home");
   }
@@ -69,17 +81,16 @@ function App() {
         top: 0,
         zIndex: 100
       }}>
-        {/* LOGO (Left) */}
+        {/* LOGO */}
         <div onClick={goHome} style={{cursor: "pointer", display: "flex", alignItems: "center", gap: "10px"}}>
           <h1 style={{margin: 0, fontSize: "1.8rem", color: "#ffffff", letterSpacing: "1px"}}>
             KHUSHI'S <span style={{color: "#03dac6"}}>STORE</span>
           </h1>
         </div>
 
-        {/* CART BUTTON (Right) */}
+        {/* CART BUTTON */}
         <div onClick={goToCart} style={{position: "relative", cursor: "pointer"}}>
           <span style={{fontSize: "1.8rem"}}>🛍️</span>
-          {/* Red Notification Badge */}
           {cart.length > 0 && (
             <span style={{
               position: "absolute",
@@ -165,6 +176,14 @@ function App() {
         {/* 4. CHECKOUT VIEW */}
         {currentView === "checkout" && (
            <Checkout onCheckout={handleOrder} onBack={goToCart} />
+        )}
+
+        {/* --- TOAST NOTIFICATION COMPONENT --- */}
+        {notification && (
+          <Toast 
+            message={notification} 
+            onClose={() => setNotification(null)} 
+          />
         )}
 
       </div>
