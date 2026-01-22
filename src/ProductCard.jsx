@@ -1,13 +1,15 @@
-// 1. Accept "onAdd" as a prop
-function ProductCard({ product, onAdd }) {
-  // CHANGED "card" TO "product-card" BELOW 👇
+// NOTICE: No imports needed!
+
+function ProductCard({ product, onAdd, onClick }) {
   return (
     <div className="product-card">
-      <img src={product.image} alt={product.name} />
-      <h3>{product.name}</h3>
-      <p className="price">${product.price}</p>
+      {/* When clicked, tell App.jsx to switch views */}
+      <div onClick={onClick} style={{cursor: "pointer"}}>
+        <img src={product.image} alt={product.name} />
+        <h3>{product.name}</h3>
+      </div>
       
-      {/* 2. When clicked, run the onAdd function with this specific product */}
+      <p className="price">${product.price}</p>
       <button onClick={() => onAdd(product)}>
         Add to Cart
       </button>
