@@ -1,162 +1,161 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams } from "react-router-dom"; 
+import Navbar from "./Navbar";
+import ProductDetails from "./ProductDetails"; 
+import Footer from "./Footer"; // <--- IMPORT FOOTER
+import { db } from "./firebase"; 
+import { collection, getDocs } from "firebase/firestore";
 
-// --- IMPORTS (Check these paths match your files!) ---
-import Home from "./pages/Home";
-import ProductDetails from "./pages/ProductDetails";
-import Checkout from "./Checkout"; 
-import Cart from "./Cart";         
-import Toast from "./Toast";       
+import Home from "./pages/Home"; 
+import Cart from "./pages/Cart";         
+import Wishlist from "./pages/Wishlist"; 
+import Checkout from "./pages/Checkout"; 
 
-// --- 1. Wrapper Component ---
-function AppContent() {
-  const [cart, setCart] = useState(() => {
-    const savedCart = localStorage.getItem("hypeCart");
-    return savedCart ? JSON.parse(savedCart) : [];
-  });
+function App() {
+  const [products, setProducts] = useState([]); 
+  const [loading, setLoading] = useState(true);
   
-  const [notification, setNotification] = useState(null);
-  const navigate = useNavigate(); 
+  // --- GLOBAL STATE ---
+  const [searchQuery, setSearchQuery] = useState(""); 
+  const [selectedCategory, setSelectedCategory] = useState("All"); 
+  const [cartItems, setCartItems] = useState([]); 
+  
+  const [wishlist, setWishlist] = useState(() => {
+    try {
+      const saved = localStorage.getItem("myWishlist");
+      return saved ? JSON.parse(saved) : {};
+    } catch (error) {
+      console.log("Wishlist data corrupted, resetting.");
+      return {};
+    }
+  });
+
+  const [currentPage, setCurrentPage] = useState("home"); 
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [notification, setNotification] = useState(null); 
 
   useEffect(() => {
-    localStorage.setItem("hypeCart", JSON.stringify(cart));
-  }, [cart]);
+    async function fetchProducts() {
+      try {
+        const productsRef = collection(db, "products");
+        const snapshot = await getDocs(productsRef);
+        const productsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setProducts(productsList);
+        setLoading(false);
+      } catch (error) { console.error("Error:", error); setLoading(false); }
+    }
+    fetchProducts();
+  }, []);
 
-  function showNotification(message) {
-    setNotification(message);
-    setTimeout(() => setNotification(null), 3000); 
-  }
+  useEffect(() => {
+    localStorage.setItem("myWishlist", JSON.stringify(wishlist));
+  }, [wishlist]);
 
-  function addToCart(product) {
-    setCart([...cart, product]);
-    showNotification(`Added ${product.name} to Bag!`);
-  }
+  // --- ACTIONS ---
+  const handleAdd = (product) => {
+    setCartItems([...cartItems, product]);
+    setNotification(`Added ${product.name} to Bag! 🛍️`);
+    setTimeout(() => { setNotification(null); }, 3000);
+  };
 
-  function removeFromCart(indexToRemove) {
-    const newCart = cart.filter((_, index) => index !== indexToRemove);
-    setCart(newCart);
-    showNotification("Item removed from Bag");
-  }
+  const handleRemoveFromCart = (index) => {
+    const newCart = [...cartItems];
+    newCart.splice(index, 1);
+    setCartItems(newCart);
+  };
 
-  // --- UI RENDER ---
+  const toggleWishlist = (id) => {
+    setWishlist((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handlePlaceOrder = () => {
+    setCartItems([]); 
+    setCurrentPage("home"); 
+    setNotification("🎉 Order Placed Successfully!");
+    setTimeout(() => { setNotification(null); }, 5000);
+  };
+
+  const handleCategoryClick = (category) => {
+    setSelectedCategory(category);
+    setCurrentPage("home"); 
+    window.scrollTo(0,0);
+  };
+
+  const renderPage = () => {
+    if (currentPage === "details") {
+      return (
+        <ProductDetails 
+          product={selectedProduct} allProducts={products}
+          onBack={() => setCurrentPage("home")} onAdd={handleAdd}
+          onProductClick={(p) => { setSelectedProduct(p); window.scrollTo(0,0); }}
+        />
+      );
+    }
+    if (currentPage === "cart") {
+      return (
+        <Cart 
+          cartItems={cartItems} 
+          onRemove={handleRemoveFromCart} 
+          onBack={() => setCurrentPage("home")}
+          onCheckout={() => setCurrentPage("checkout")} 
+        />
+      );
+    }
+    if (currentPage === "checkout") { 
+      const total = cartItems.reduce((sum, item) => sum + item.price, 0);
+      return (
+        <Checkout 
+          total={total} 
+          onPlaceOrder={handlePlaceOrder} 
+          onBack={() => setCurrentPage("cart")}
+        />
+      );
+    }
+    if (currentPage === "wishlist") { 
+      return (
+        <Wishlist 
+          wishlist={wishlist} allProducts={products} 
+          onRemove={toggleWishlist} onBack={() => setCurrentPage("home")} onAdd={handleAdd}
+        />
+      );
+    }
+    // Default: Home
+    return (
+      <Home 
+        products={products} loading={loading} searchQuery={searchQuery}
+        selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
+        wishlist={wishlist} toggleWishlist={toggleWishlist} 
+        onAdd={handleAdd} 
+        onProductClick={(p) => { setSelectedProduct(p); setCurrentPage("details"); window.scrollTo(0,0); }} 
+      />
+    );
+  };
+
   return (
-    <div className="app-container">
-      {/* PREMIUM GLASS NAVBAR */}
-      {/* PREMIUM GLASS NAVBAR */}
-      <nav style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        padding: "20px 40px", 
-        background: "rgba(20, 20, 20, 0.85)", 
-        backdropFilter: "blur(12px)",         
-        borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-        position: "sticky", top: 0, zIndex: 100,
-        boxShadow: "0 4px 30px rgba(0, 0, 0, 0.3)"
-      }}>
-        <Link to="/" style={{textDecoration: "none"}}>
-          <h1 style={{
-            margin: 0, fontSize: "1.6rem", color: "#ffffff", 
-            letterSpacing: "-0.5px", fontFamily: "'Montserrat', sans-serif", fontWeight: 800
-          }}>
-            KHUSHI'S <span style={{color: "#03dac6"}}>STORE</span>
-          </h1>
-        </Link>
+    <div style={{ background: "#121212", minHeight: "100vh", color: "white", fontFamily: "'Montserrat', sans-serif", display: "flex", flexDirection: "column" }}>
+      
+      <Navbar 
+        cartCount={cartItems.length} 
+        searchQuery={searchQuery} 
+        setSearchQuery={setSearchQuery} 
+        onCategoryClick={handleCategoryClick} 
+        onCartClick={() => setCurrentPage("cart")} 
+        onWishlistClick={() => setCurrentPage("wishlist")} 
+      />
+      
+      {notification && (
+        <div style={{ position: "fixed", bottom: "30px", left: "50%", transform: "translateX(-50%)", background: "#03dac6", color: "black", padding: "12px 24px", borderRadius: "30px", fontWeight: "bold", zIndex: 2000 }}>
+          {notification}
+        </div>
+      )}
 
-        <Link to="/cart" style={{textDecoration: "none", position: "relative", display: "flex", alignItems: "center"}}>
-          
-          {/* CLEAN SHOPPING BAG ICON */}
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color: "white"}}>
-            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <path d="M16 10a4 4 0 0 1-8 0"></path>
-          </svg>
-
-          {/* Cart Badge */}
-          {cart.length > 0 && (
-            <span style={{
-              position: "absolute", top: "-8px", right: "-8px",
-              background: "#03dac6", color: "black", borderRadius: "50%",
-              width: "20px", height: "20px", display: "flex", justifyContent: "center", alignItems: "center",
-              fontSize: "0.75rem", fontWeight: "bold", border: "2px solid #1e1e1e"
-            }}>
-              {cart.length}
-            </span>
-          )}
-        </Link>
-      </nav>
-
-      {/* PAGE CONTENT */}
-      <div style={{padding: "40px 20px", maxWidth: "1200px", margin: "0 auto"}}>
-        <Routes>
-          <Route path="/" element={<Home onAdd={addToCart} onProductClick={(p) => navigate(`/product/${p.id}`)} />} />
-          <Route path="/product/:id" element={<ProductDetailsWrapper onAdd={addToCart} />} />
-          <Route path="/cart" element={
-            <div style={{maxWidth: "800px", margin: "0 auto", color: "white"}}>
-              <h2 style={{
-                fontFamily: "'Montserrat', sans-serif", fontWeight: 600, 
-                borderBottom: "1px solid #333", paddingBottom: "15px", marginBottom: "30px"
-              }}>
-                Your Collection
-              </h2>
-              {cart.length === 0 ? (
-                <div style={{textAlign: "center", padding: "60px", color: "#666"}}>
-                  <h3 style={{fontSize: "1.5rem", marginBottom: "20px"}}>Your rotation is empty.</h3>
-                  <Link to="/" style={{
-                    color: "#1e1e1e", background: "#03dac6", padding: "12px 30px", 
-                    borderRadius: "30px", textDecoration: "none", fontWeight: "bold"
-                  }}>
-                    Cop some kicks
-                  </Link>
-                </div>
-              ) : (
-                <>
-                  <Cart cartItems={cart} onRemove={removeFromCart} />
-                  <div style={{textAlign: "right", marginTop: "40px"}}>
-                    <h3 style={{fontSize: "1.5rem", fontFamily: "'Montserrat', sans-serif"}}>
-                      Total: <span style={{color: "#03dac6"}}>${cart.reduce((sum, item) => sum + item.price, 0)}</span>
-                    </h3>
-                    <button 
-                      onClick={() => navigate("/checkout")}
-                      style={{
-                        marginTop: "20px", padding: "18px 50px", 
-                        background: "linear-gradient(135deg, #03dac6 0%, #02a394 100%)",
-                        color: "black", border: "none", fontSize: "1rem", 
-                        cursor: "pointer", fontWeight: "800", borderRadius: "50px",
-                        boxShadow: "0 10px 20px rgba(3, 218, 198, 0.3)",
-                        transition: "transform 0.2s"
-                      }}
-                      onMouseOver={(e) => e.target.style.transform = "scale(1.05)"}
-                      onMouseOut={(e) => e.target.style.transform = "scale(1)"}
-                    >
-                      SECURE CHECKOUT
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          } />
-          <Route path="/checkout" element={<Checkout cart={cart} onClearCart={() => setCart([])} />} />
-        </Routes>
+      {/* Main Content */}
+      <div style={{ flex: 1 }}>
+         {renderPage()}
       </div>
 
-      {notification && <Toast message={notification} onClose={() => setNotification(null)} />}
+      {/* FOOTER ADDED HERE */}
+      <Footer />
     </div>
-  );
-}
-
-// Helper for Product Details
-function ProductDetailsWrapper({ onAdd }) {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  // Ensure ProductDetails handles the 'id' correctly
-  return <ProductDetails productId={id} onAdd={onAdd} onBack={() => navigate("/")} />;
-}
-
-// --- 2. Main App Component ---
-function App() {
-  return (
-    <Router>
-      <AppContent />
-    </Router>
   );
 }
 

@@ -1,209 +1,137 @@
-import { useState, useEffect } from "react";
-import { db } from "../firebase"; 
-import { collection, getDocs } from "firebase/firestore";
+import { useState } from "react";
 
-function Home({ onAdd, onProductClick }) {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+function Home({ products, loading, searchQuery, selectedCategory, setSelectedCategory, wishlist, toggleWishlist, onAdd, onProductClick }) {
   
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [searchQuery, setSearchQuery] = useState(""); 
-
-  useEffect(() => {
-    async function fetchProducts() {
-      try {
-        const productsRef = collection(db, "products");
-        const snapshot = await getDocs(productsRef);
-        const productsList = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setProducts(productsList);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching shoes:", error);
-        setLoading(false);
-      }
-    }
-    fetchProducts();
-  }, []);
+  const [priceFilter, setPriceFilter] = useState("All"); 
 
   const filteredProducts = products.filter((product) => {
-    const categoryMatch = selectedCategory === "All" || product.category === selectedCategory;
     const searchMatch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return categoryMatch && searchMatch;
+    const categoryMatch = selectedCategory === "All" || product.category === selectedCategory || product.brand === selectedCategory;
+    let priceMatch = true;
+    if (priceFilter === "Under $100") priceMatch = product.price < 100;
+    if (priceFilter === "$100 - $150") priceMatch = product.price >= 100 && product.price <= 150;
+    if (priceFilter === "Over $150") priceMatch = product.price > 150;
+    return searchMatch && categoryMatch && priceMatch;
   });
 
   return (
-    <div style={{maxWidth: "1200px", margin: "0 auto", paddingBottom: "50px"}}>
+    <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "20px" }}>
       
-      {/* 1. SEARCH BAR */}
-      <div style={{textAlign: "center", margin: "30px 0 40px 0"}}>
-        <input 
-          type="text" 
-          placeholder="Search your next cop..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            padding: "15px 30px",
-            width: "100%", maxWidth: "500px",
-            borderRadius: "50px",
-            border: "1px solid rgba(255, 255, 255, 0.2)",
-            fontSize: "1rem",
-            background: "rgba(255, 255, 255, 0.05)",
-            color: "white", outline: "none",
-            backdropFilter: "blur(10px)",
-            fontFamily: "'Montserrat', sans-serif",
-            transition: "all 0.3s ease"
-          }}
-          onFocus={(e) => e.target.style.borderColor = "#03dac6"}
-          onBlur={(e) => e.target.style.borderColor = "rgba(255, 255, 255, 0.2)"}
-        />
-      </div>
-
-      {/* 2. CATEGORY BUTTONS (FIXED LAYOUT) */}
-      <div style={{
-        display: "flex", 
-        flexDirection: "row", // FORCE ROW
-        flexWrap: "wrap",     // Allow wrapping if screen is tiny
-        gap: "15px", 
-        justifyContent: "center", 
-        marginBottom: "40px"
+      {/* --- PROMOTIONAL BANNER (NEW) --- */}
+      <div style={{ 
+          width: "100%", 
+          background: "linear-gradient(90deg, #fff0e3 0%, #fbc2eb 100%)", // Myntra-like gradient
+          borderRadius: "8px", 
+          marginBottom: "40px", 
+          padding: "30px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          color: "#333",
+          boxShadow: "0 4px 15px rgba(0,0,0,0.2)"
       }}>
-        {["All", "Nike", "Adidas", "Puma"].map((category) => (
-          <button
-            key={category}
-            onClick={() => setSelectedCategory(category)}
-            style={{
-              // FORCE WIDTH TO BE AUTOMATIC (Fixes the stretching issue)
-              width: "auto", 
-              minWidth: "80px",
-              padding: "10px 25px",
-              borderRadius: "30px",
-              border: selectedCategory === category ? "none" : "1px solid rgba(255,255,255,0.1)",
-              cursor: "pointer",
-              fontWeight: "700",
-              fontSize: "0.9rem",
-              fontFamily: "'Montserrat', sans-serif",
-              background: selectedCategory === category 
-                ? "linear-gradient(135deg, #03dac6 0%, #02a394 100%)" 
-                : "rgba(255,255,255,0.05)",
-              color: selectedCategory === category ? "black" : "white",
-              transition: "transform 0.2s ease"
-            }}
-            onMouseOver={(e) => e.target.style.transform = "translateY(-2px)"}
-            onMouseOut={(e) => e.target.style.transform = "translateY(0)"}
-          >
-            {category}
-          </button>
-        ))}
-      </div>
-
-      {/* 3. PRODUCT GRID */}
-      <div style={{
-        display: "grid", 
-        gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", 
-        gap: "30px",
-        padding: "10px"
-      }}>
-        {loading ? (
-          <p style={{color: "white", textAlign: "center", width: "100%"}}>Loading Collection...</p>
-        ) : (
-          filteredProducts.map((product) => (
-            
-            // --- FIXED CARD DESIGN ---
-            <div 
-              key={product.id} 
-              onClick={() => onProductClick(product)}
-              style={{
-                background: "#1e1e1e",
-                borderRadius: "16px",
-                overflow: "hidden",
-                cursor: "pointer",
-                transition: "all 0.3s ease",
-                border: "1px solid rgba(255,255,255,0.08)",
-                position: "relative",
-                display: "flex",
-                flexDirection: "column"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-5px)";
-                e.currentTarget.style.border = "1px solid rgba(3, 218, 198, 0.4)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.border = "1px solid rgba(255,255,255,0.08)";
-              }}
-            >
-              {/* Image */}
-              <div style={{
-                height: "220px", 
-                background: "#2a2a2a",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                position: "relative"
-              }}>
-                 <img src={product.image} alt={product.name} style={{width: "100%", height: "100%", objectFit: "cover"}} />
-                 <span style={{
-                   position: "absolute", top: "10px", left: "10px",
-                   background: "rgba(0,0,0,0.6)", color: "white",
-                   padding: "4px 8px", borderRadius: "6px", fontSize: "0.6rem",
-                   fontWeight: "bold", fontFamily: "'Montserrat', sans-serif"
-                 }}>
-                   {product.category.toUpperCase()}
-                 </span>
+          <div>
+              <h2 style={{ fontSize: "2.5rem", margin: "0 0 10px 0", fontWeight: "900", color: "#ff3f6c" }}>
+                  Get 25% Off
+              </h2>
+              <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: "600" }}>
+                  Up To <span style={{ textDecoration: "underline" }}>$200 Off*</span> | On Your First Order
+              </p>
+              <div style={{ marginTop: "15px", background: "white", padding: "8px 15px", display: "inline-block", borderRadius: "5px", border: "1px dashed #333", fontWeight: "bold" }}>
+                  CODE: <span style={{ color: "#ff3f6c" }}>MYNTRASAVE</span>
               </div>
+          </div>
+          {/* Decorative graphic (Text based) */}
+          <div style={{ fontSize: "5rem", fontWeight: "bold", opacity: 0.1, userSelect: "none" }}>
+              SALE
+          </div>
+      </div>
 
-              {/* Details (FIXED OVERLAP HERE) */}
-              <div style={{padding: "15px"}}>
-                <h3 style={{
-                  margin: "0 0 5px 0", fontSize: "1rem", fontWeight: 700, 
-                  color: "white", fontFamily: "'Montserrat', sans-serif",
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"
-                }}>
-                  {product.name}
-                </h3>
-                <p style={{margin: "0 0 15px 0", color: "#888", fontSize: "0.8rem"}}>Premium Kicks</p>
-                
-                {/* ROW: PRICE LEFT, BUTTON RIGHT */}
-                <div style={{
-                    display: "flex", 
-                    justifyContent: "space-between", 
-                    alignItems: "center",
-                    gap: "10px" // Forces space between Price and Button
-                }}>
-                   <span style={{
-                     color: "#03dac6", fontSize: "1.1rem", fontWeight: "800", fontFamily: "'Montserrat', sans-serif"
-                   }}>
-                     ${product.price}
-                   </span>
-                   
-                   <button 
-                     onClick={(e) => {
-                       e.stopPropagation();
-                       onAdd(product);
-                     }}
-                     style={{
-                       // COMPACT BUTTON STYLE
-                       padding: "6px 14px", 
-                       borderRadius: "20px", 
-                       border: "none",
-                       background: "white", 
-                       color: "black", 
-                       fontWeight: "800",
-                       fontSize: "0.7rem", // Smaller Font
-                       cursor: "pointer", 
-                       fontFamily: "'Montserrat', sans-serif",
-                       whiteSpace: "nowrap" // Prevents button text breaking
-                     }}
-                   >
-                     ADD +
-                   </button>
-                </div>
+      <div style={{ display: "flex", gap: "30px", flexDirection: "row" }}>
+        
+        {/* SIDEBAR */}
+        <div style={{ flex: "0 0 250px", display: "block" }}>
+          <div style={{ position: "sticky", top: "100px" }}>
+            <h3 style={{ fontSize: "1.1rem", borderBottom: "1px solid #333", paddingBottom: "10px", marginBottom: "20px" }}>FILTERS</h3>
+            
+            {/* CATEGORIES */}
+            <div style={{ marginBottom: "30px" }}>
+              <h4 style={{ fontSize: "0.9rem", color: "#888", marginBottom: "15px" }}>CATEGORIES</h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {["All", "Men", "Women", "Kids"].map((cat) => (
+                  <label key={cat} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", fontSize: "0.9rem" }}>
+                    <input type="radio" name="category" checked={selectedCategory === cat} onChange={() => setSelectedCategory(cat)} style={{ accentColor: "#03dac6" }} />
+                    {cat}
+                  </label>
+                ))}
               </div>
             </div>
 
-          ))
-        )}
+            {/* BRAND */}
+            <div style={{ marginBottom: "30px" }}>
+              <h4 style={{ fontSize: "0.9rem", color: "#888", marginBottom: "15px" }}>BRAND</h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {["Nike", "Adidas", "Puma"].map((brand) => (
+                  <label key={brand} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", fontSize: "0.9rem" }}>
+                    <input type="radio" name="category" checked={selectedCategory === brand} onChange={() => setSelectedCategory(brand)} style={{ accentColor: "#03dac6" }} />
+                    {brand}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* PRICE */}
+            <div style={{ marginBottom: "30px" }}>
+              <h4 style={{ fontSize: "0.9rem", color: "#888", marginBottom: "15px" }}>PRICE</h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {["All", "Under $100", "$100 - $150", "Over $150"].map((price) => (
+                  <label key={price} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", fontSize: "0.9rem" }}>
+                    <input type="radio" name="price" checked={priceFilter === price} onChange={() => setPriceFilter(price)} style={{ accentColor: "#03dac6" }} />
+                    {price}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* PRODUCT GRID */}
+        <div style={{ flex: 1 }}>
+          <h2 style={{ fontSize: "1.2rem", marginBottom: "20px" }}>
+            {selectedCategory.toUpperCase()} SHOES <span style={{color: "#777", fontSize: "1rem"}}>({filteredProducts.length} items)</span>
+          </h2>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "20px" }}>
+            {loading ? ( <p>Loading...</p> ) : (
+              filteredProducts.map((product) => (
+                 <div key={product.id} onClick={() => onProductClick(product)} style={{ background: "#1e1e1e", cursor: "pointer", borderRadius: "4px", overflow: "hidden", border: "1px solid #333", position: "relative" }}>
+                    <div style={{ width: "100%", aspectRatio: "4/5", background: "#2a2a2a", overflow: "hidden", position: "relative" }}>
+                       <img src={product.image} onError={(e) => { e.target.src = "https://placehold.co/400x500?text=No+Image"; }} style={{width: "100%", height: "100%", objectFit: "cover"}} />
+                       <button
+                          onClick={(e) => { e.stopPropagation(); toggleWishlist(product.id); }}
+                          style={{ position: "absolute", top: "10px", right: "10px", background: "white", border: "none", borderRadius: "50%", width: "30px", height: "30px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                       >
+                          <span style={{ fontSize: "1.2rem", color: wishlist[product.id] ? "#ff3f6c" : "#333", paddingTop: "2px" }}>
+                            {wishlist[product.id] ? "♥" : "♡"}
+                          </span>
+                       </button>
+                    </div>
+                    <div style={{ padding: "12px" }}>
+                      <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: "bold", textTransform: "uppercase" }}>{product.brand}</h3>
+                      <p style={{ margin: 0, color: "#a9a9a9", fontSize: "0.85rem" }}>{product.name}</p>
+                      <p style={{ margin: "5px 0", fontSize: "0.95rem", fontWeight: "bold", color: "#03dac6" }}>Rs. {product.price}</p>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onAdd(product); }}
+                        style={{ width: "100%", padding: "10px", background: "transparent", border: "1px solid #555", color: "white", borderRadius: "2px", fontWeight: "600", cursor: "pointer" }}
+                      >
+                        Add to Bag
+                      </button>
+                    </div>
+                  </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
