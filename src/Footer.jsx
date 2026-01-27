@@ -74,7 +74,7 @@ function Footer() {
       
       {/* Bottom Copyright */}
       <div style={{ borderTop: "1px solid #333", marginTop: "40px", paddingTop: "20px", textAlign: "center" }}>
-        <p>© 2026 Khushi's Store. All rights reserved.</p>
+        <p>© 2026 Hype Store. All rights reserved.</p>
       </div>
     </footer>
   );
