@@ -2,10 +2,14 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
+// 1. IMPORT BROWSER ROUTER
+import { BrowserRouter } from 'react-router-dom'
 
-// NOTICE: No <BrowserRouter> here! App.jsx handles it now.
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    {/* 2. WRAP APP IN BROWSER ROUTER */}
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </React.StrictMode>,
 )

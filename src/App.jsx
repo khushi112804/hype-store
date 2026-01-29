@@ -1,16 +1,20 @@
 import { useState, useEffect } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom"; // IMPORT ROUTER TOOLS
 import Navbar from "./Navbar";
 import ProductDetails from "./ProductDetails"; 
-import Footer from "./Footer"; // <--- IMPORT FOOTER
+import Footer from "./Footer"; 
 import { db } from "./firebase"; 
 import { collection, getDocs } from "firebase/firestore";
 
+// PAGES
+import Login from "./pages/Login";
 import Home from "./pages/Home"; 
-import Cart from "./pages/Cart";         
+import Cart from "./pages/Cart"; 
 import Wishlist from "./pages/Wishlist"; 
 import Checkout from "./pages/Checkout"; 
 
 function App() {
+  const navigate = useNavigate(); // HOOK TO MOVE PAGES
   const [products, setProducts] = useState([]); 
   const [loading, setLoading] = useState(true);
   
@@ -18,20 +22,17 @@ function App() {
   const [searchQuery, setSearchQuery] = useState(""); 
   const [selectedCategory, setSelectedCategory] = useState("All"); 
   const [cartItems, setCartItems] = useState([]); 
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [notification, setNotification] = useState(null); 
   
   const [wishlist, setWishlist] = useState(() => {
     try {
       const saved = localStorage.getItem("myWishlist");
       return saved ? JSON.parse(saved) : {};
     } catch (error) {
-      console.log("Wishlist data corrupted, resetting.");
       return {};
     }
   });
-
-  const [currentPage, setCurrentPage] = useState("home"); 
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [notification, setNotification] = useState(null); 
 
   useEffect(() => {
     async function fetchProducts() {
@@ -69,65 +70,22 @@ function App() {
 
   const handlePlaceOrder = () => {
     setCartItems([]); 
-    setCurrentPage("home"); 
     setNotification("🎉 Order Placed Successfully!");
     setTimeout(() => { setNotification(null); }, 5000);
+    navigate("/"); // Go Home
   };
 
+  // --- NAVIGATION HANDLERS ---
   const handleCategoryClick = (category) => {
     setSelectedCategory(category);
-    setCurrentPage("home"); 
+    navigate("/"); // Go Home
     window.scrollTo(0,0);
   };
 
-  const renderPage = () => {
-    if (currentPage === "details") {
-      return (
-        <ProductDetails 
-          product={selectedProduct} allProducts={products}
-          onBack={() => setCurrentPage("home")} onAdd={handleAdd}
-          onProductClick={(p) => { setSelectedProduct(p); window.scrollTo(0,0); }}
-        />
-      );
-    }
-    if (currentPage === "cart") {
-      return (
-        <Cart 
-          cartItems={cartItems} 
-          onRemove={handleRemoveFromCart} 
-          onBack={() => setCurrentPage("home")}
-          onCheckout={() => setCurrentPage("checkout")} 
-        />
-      );
-    }
-    if (currentPage === "checkout") { 
-      const total = cartItems.reduce((sum, item) => sum + item.price, 0);
-      return (
-        <Checkout 
-          total={total} 
-          onPlaceOrder={handlePlaceOrder} 
-          onBack={() => setCurrentPage("cart")}
-        />
-      );
-    }
-    if (currentPage === "wishlist") { 
-      return (
-        <Wishlist 
-          wishlist={wishlist} allProducts={products} 
-          onRemove={toggleWishlist} onBack={() => setCurrentPage("home")} onAdd={handleAdd}
-        />
-      );
-    }
-    // Default: Home
-    return (
-      <Home 
-        products={products} loading={loading} searchQuery={searchQuery}
-        selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
-        wishlist={wishlist} toggleWishlist={toggleWishlist} 
-        onAdd={handleAdd} 
-        onProductClick={(p) => { setSelectedProduct(p); setCurrentPage("details"); window.scrollTo(0,0); }} 
-      />
-    );
+  const handleProductClick = (product) => {
+    setSelectedProduct(product);
+    navigate("/details"); // Go to Details
+    window.scrollTo(0,0);
   };
 
   return (
@@ -138,8 +96,8 @@ function App() {
         searchQuery={searchQuery} 
         setSearchQuery={setSearchQuery} 
         onCategoryClick={handleCategoryClick} 
-        onCartClick={() => setCurrentPage("cart")} 
-        onWishlistClick={() => setCurrentPage("wishlist")} 
+        onCartClick={() => navigate("/cart")} 
+        onWishlistClick={() => navigate("/wishlist")} 
       />
       
       {notification && (
@@ -148,12 +106,63 @@ function App() {
         </div>
       )}
 
-      {/* Main Content */}
+      {/* --- ROUTES: THIS REPLACES renderPage() --- */}
       <div style={{ flex: 1 }}>
-         {renderPage()}
+        <Routes>
+          
+          {/* 1. HOME */}
+          <Route path="/" element={
+            <Home 
+              products={products} loading={loading} searchQuery={searchQuery}
+              selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
+              wishlist={wishlist} toggleWishlist={toggleWishlist} 
+              onAdd={handleAdd} 
+              onProductClick={handleProductClick} 
+            />
+          } />
+
+          {/* 2. LOGIN (New!) */}
+          <Route path="/login" element={<Login />} />
+
+          {/* 3. CART */}
+          <Route path="/cart" element={
+            <Cart 
+              cartItems={cartItems} 
+              onRemove={handleRemoveFromCart} 
+              onBack={() => navigate("/")}
+              onCheckout={() => navigate("/checkout")} 
+            />
+          } />
+
+          {/* 4. CHECKOUT */}
+          <Route path="/checkout" element={
+            <Checkout 
+              total={cartItems.reduce((sum, item) => sum + item.price, 0)} 
+              onPlaceOrder={handlePlaceOrder} 
+              onBack={() => navigate("/cart")}
+            />
+          } />
+
+          {/* 5. WISHLIST */}
+          <Route path="/wishlist" element={
+            <Wishlist 
+              wishlist={wishlist} allProducts={products} 
+              onRemove={toggleWishlist} onBack={() => navigate("/")} onAdd={handleAdd}
+            />
+          } />
+
+          {/* 6. DETAILS */}
+          <Route path="/details" element={
+            <ProductDetails 
+              product={selectedProduct} allProducts={products}
+              onBack={() => navigate("/")} onAdd={handleAdd}
+              onProductClick={handleProductClick}
+            />
+          } />
+
+        </Routes>
       </div>
 
-      {/* FOOTER ADDED HERE */}
       <Footer />
     </div>
   );
