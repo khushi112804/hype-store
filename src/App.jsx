@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Routes, Route, useNavigate } from "react-router-dom"; // IMPORT ROUTER TOOLS
+import { Routes, Route, useNavigate } from "react-router-dom"; 
 import Navbar from "./Navbar";
 import ProductDetails from "./ProductDetails"; 
 import Footer from "./Footer"; 
-import { db } from "./firebase"; 
+import { db, auth } from "./firebase"; // <--- 1. ADDED 'auth' HERE
 import { collection, getDocs } from "firebase/firestore";
+import { onAuthStateChanged, signOut } from "firebase/auth"; // <--- 2. ADDED AUTH TOOLS
 
 // PAGES
 import Login from "./pages/Login";
@@ -14,10 +15,13 @@ import Wishlist from "./pages/Wishlist";
 import Checkout from "./pages/Checkout"; 
 
 function App() {
-  const navigate = useNavigate(); // HOOK TO MOVE PAGES
+  const navigate = useNavigate(); 
   const [products, setProducts] = useState([]); 
   const [loading, setLoading] = useState(true);
   
+  // --- USER STATE (This was missing!) ---
+  const [user, setUser] = useState(null); 
+
   // --- GLOBAL STATE ---
   const [searchQuery, setSearchQuery] = useState(""); 
   const [selectedCategory, setSelectedCategory] = useState("All"); 
@@ -33,6 +37,21 @@ function App() {
       return {};
     }
   });
+
+  // --- 3. LISTENER: CHECKS IF YOU ARE LOGGED IN ---
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser); // <--- SAVES THE USER
+      console.log("Current User:", currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    alert("Logged out!");
+    navigate("/");
+  };
 
   useEffect(() => {
     async function fetchProducts() {
@@ -72,25 +91,25 @@ function App() {
     setCartItems([]); 
     setNotification("🎉 Order Placed Successfully!");
     setTimeout(() => { setNotification(null); }, 5000);
-    navigate("/"); // Go Home
+    navigate("/"); 
   };
 
-  // --- NAVIGATION HANDLERS ---
   const handleCategoryClick = (category) => {
     setSelectedCategory(category);
-    navigate("/"); // Go Home
+    navigate("/"); 
     window.scrollTo(0,0);
   };
 
   const handleProductClick = (product) => {
     setSelectedProduct(product);
-    navigate("/details"); // Go to Details
+    navigate("/details"); 
     window.scrollTo(0,0);
   };
 
   return (
     <div style={{ background: "#121212", minHeight: "100vh", color: "white", fontFamily: "'Montserrat', sans-serif", display: "flex", flexDirection: "column" }}>
       
+      {/* 4. PASS USER TO NAVBAR (Crucial Step!) */}
       <Navbar 
         cartCount={cartItems.length} 
         searchQuery={searchQuery} 
@@ -98,6 +117,8 @@ function App() {
         onCategoryClick={handleCategoryClick} 
         onCartClick={() => navigate("/cart")} 
         onWishlistClick={() => navigate("/wishlist")} 
+        user={user}             // <--- PASS USER INFO
+        onLogout={handleLogout} // <--- PASS LOGOUT FUNCTION
       />
       
       {notification && (
@@ -106,11 +127,8 @@ function App() {
         </div>
       )}
 
-      {/* --- ROUTES: THIS REPLACES renderPage() --- */}
       <div style={{ flex: 1 }}>
         <Routes>
-          
-          {/* 1. HOME */}
           <Route path="/" element={
             <Home 
               products={products} loading={loading} searchQuery={searchQuery}
@@ -121,10 +139,8 @@ function App() {
             />
           } />
 
-          {/* 2. LOGIN (New!) */}
           <Route path="/login" element={<Login />} />
 
-          {/* 3. CART */}
           <Route path="/cart" element={
             <Cart 
               cartItems={cartItems} 
@@ -134,7 +150,6 @@ function App() {
             />
           } />
 
-          {/* 4. CHECKOUT */}
           <Route path="/checkout" element={
             <Checkout 
               total={cartItems.reduce((sum, item) => sum + item.price, 0)} 
@@ -143,7 +158,6 @@ function App() {
             />
           } />
 
-          {/* 5. WISHLIST */}
           <Route path="/wishlist" element={
             <Wishlist 
               wishlist={wishlist} allProducts={products} 
@@ -151,7 +165,6 @@ function App() {
             />
           } />
 
-          {/* 6. DETAILS */}
           <Route path="/details" element={
             <ProductDetails 
               product={selectedProduct} allProducts={products}
@@ -159,7 +172,6 @@ function App() {
               onProductClick={handleProductClick}
             />
           } />
-
         </Routes>
       </div>
 
